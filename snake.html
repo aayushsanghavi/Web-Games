@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Snake</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+	<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+	<style type="text/css">
+		canvas{
+			display: block;
+			position: absolute;
+			border: 2px solid grey;
+			margin: 1em 0 0 1em;
+		}
+		body{
+			color:white;
+			background-color: black;
+			font-family:"Noto Sans";
+		}
+		.container{
+			width:52%;
+			height:auto;
+			float:left;
+			margin-left: 45%;
+		}
+		#your_score{
+			margin-top: 4em;
+			visibility: hidden;
+		}
+		.buttons{
+			margin-top: 3em;
+		}
+		.buttons div{
+			display:inline-block;
+		}
+		button{
+			margin-top: 5px;
+			color:black !important;
+		}
+		#resume, #pause, #start_again{
+			display: none;
+		}
+		#myModal{
+			color:black !important;
+		}
+		#start_again()
+		{
+			margin-top: -1em;
+		}
+	</style>
+</head>
+<body>
+
+<div class="container">
+	<center>
+		<h1>Snake Game</h1>
+		
+		<h3 id="your_score">Your Score is : <span id="score"></span></h3>
+		
+		<div class="modal fade" id="myModal" role="dialog">
+  		  <div class="modal-dialog modal-sm">
+    		  <div class="modal-content">
+    		    <div class="modal-header">
+    		      <button type="button" class="close" data-dismiss="modal"><span class="glyphicon glyphicon-remove"></span></button>
+        		  <h3 class="modal-title">Game Over</h3>
+        		</div>
+     		    <div class="modal-body">
+        		  <h4>Your score was <span id="game_score"></span>.</h4>
+        		<button class="btn btn-success btn-lg buttons" data-dismiss="modal" onclick="reload()" id="start_again">
+          			<span class="glyphicon glyphicon-play-circle"></span> Restart
+        		</button>
+        	</div>
+      		</div>
+    	  </div>
+  		</div>
+
+		<div class="buttons">
+			<h2>Controls :</h2>
+			<div>
+			<button class="btn btn-info" title="Move Up"><span class="glyphicon glyphicon-arrow-up"></span></button>
+			<br/>
+			<button class="btn btn-info" title="Move Left"><span class="glyphicon glyphicon-arrow-left"></span></button>
+			<button class="btn btn-info" title="Move Down"><span class="glyphicon glyphicon-arrow-down"></span></button>
+			<button class="btn btn-info" title="Move Right"><span class="glyphicon glyphicon-arrow-right"></span></button>
+			</div>
+			<div style="margin-left:3em;">
+			<button class="btn btn-info" title="Move Up">W</button>
+			<br/>
+			<button class="btn btn-info" title="Move Left">A</button>
+			<button class="btn btn-info" title="Move Down">&nbsp;S</button>
+			<button class="btn btn-info" title="Move Right">D</button>
+			</div>
+			<p><strong>(You might not want to press the space-bar or enter-key)</strong></p>
+		</div>
+
+		<div class="buttons">
+			<h3>Difficulty : </h3>
+			<button class="btn" id="easy" style="background-color:yellow;" onmouseover="hover()" onmouseout="restore()" onclick="easy()">Easy</button>
+			<button class="btn btn-warning" id="medium" onclick="medium()">Medium</button>
+			<button class="btn btn-danger" id="hard" onclick="hard()">Hard</button>
+		</div>
+
+		<button class="btn btn-success btn-lg buttons" onclick="play()" id="start">
+          <span class="glyphicon glyphicon-play-circle"></span> Play
+        </button>
+        <button class="btn btn-success btn-lg buttons" onclick="stop()" id="pause">
+          <span class="glyphicon glyphicon-pause"></span> Pause
+        </button>
+        <button class="btn btn-success btn-lg buttons" onclick="restart()" id="resume">
+          <span class="glyphicon glyphicon-play"></span> Resume
+        </button>
+	</center>
+</div>
+
+<script type="text/javascript">
+
+	var speed=5,flag=0;
+	function displayScore()
+	{
+		document.getElementById("your_score").style.visibility='visible';
+	}
+
+	function hover()
+	{
+		document.getElementById("easy").style.backgroundColor='#ffcc00';
+	}
+	
+	function restore()
+	{
+		document.getElementById("easy").style.backgroundColor='#ffff00';
+	}
+
+	function easy()
+	{
+		$("#medium").fadeOut(500);
+		$("#hard").fadeOut(500);
+		speed=speed+2;
+		flag=1;
+	}
+
+	function medium()
+	{
+		$("#easy").fadeOut(500);
+		$("#hard").fadeOut(500);
+		flag=1;
+	}
+
+	function hard()
+	{
+		$("#medium").fadeOut(500);
+		$("#easy").fadeOut(500);
+		speed=speed-2;
+		flag=1;
+	}
+
+	//variables and constants
+	var i,j,
+	rows=28,
+	cols=28,
+	snake=1,
+	empty=0,
+	food=-1,
+	
+	up=1,
+	right=2,
+	down=3,
+	left=0,
+
+	//controls
+	left_key=37,
+	up_key=38,
+	down_key=40,
+	right_key=39,
+
+	a_key=65,
+	w_key=87,
+	s_key=83,
+	d_key=68,
+
+	//objects
+	canvas,
+	context,
+	frames,
+	score,
+	keystate,
+	animation;
+
+	//defining grid of the game; (object)
+	grid = {
+		
+		//defining variables
+		width:null,
+		height:null,
+		matrix:null,
+
+		//defining member functions
+		
+		//initialises the grid with value
+		initialise: function(value,rows,cols)
+		{
+			this.width=cols;
+			this.height=rows;
+			this.matrix=[];
+
+			for(i=0;i<cols;i++)
+			{
+				this.matrix.push([]);
+				for (j=0;j<rows;j++)
+					this.matrix[i].push(value);
+			}
+
+		},
+		
+		//sets value of a cell of the grid
+		setValue: function(value,x,y)
+		{
+			this.matrix[x][y]=value;
+		},
+
+		//gets value of a cell of the grid
+		getValue: function(x,y)
+		{
+			//console.log("entered");
+			return this.matrix[x][y];
+		}
+	};
+
+	snake = {
+		
+		//defining variables
+		direction:null,
+		last:null,
+		q:null,
+
+		//defining member functions
+		
+		//initialise the snake
+		initialise: function (direction,x,y)
+		{
+			this.direction=direction;
+			this.q=[];
+			this.insert(x,y);
+		},
+
+		//insert a new node of the snake
+		insert: function (x,y)
+		{
+			this.q.unshift({x:x,y:y}); //unshift adds elements in the beginning of the queue
+			this.last=this.q[0];
+		},
+
+		//pops the tail node of the snake
+		remove: function ()
+		{
+			return this.q.pop();
+		}
+	};
+
+	//put food for the snake
+	function putFood()
+	{
+		var x={row:Math.floor(Math.random()*28),col:Math.floor(Math.random()*28)};
+		while(grid.getValue(x.row,x.col)!=0)
+		{
+			//console.log("calling getValue from putFood");
+			x={row:Math.floor(Math.random()*28),col:Math.floor(Math.random()*28)};
+		}
+		grid.setValue(food,x.row,x.col);
+	}
+
+	//main function that starts the game
+	function main()
+	{
+		canvas=document.createElement('canvas');
+		canvas.width=rows*20;
+		canvas.height=cols*20;
+		context=canvas.getContext('2d');
+		document.body.appendChild(canvas);
+		frames=0;
+		keystate=[];
+		document.addEventListener("keydown",function(event){
+			keystate[event.keyCode]=true;
+		//	console.log(event.keyCode);
+		});
+		document.addEventListener("keyup",function(event){
+			delete keystate[event.keyCode];
+		});
+		initialise();
+		game_loop();
+	}
+
+	//initialising the game variables
+	function initialise()
+	{
+		score=0;
+		grid.initialise(empty,rows,cols);
+		snake.initialise(up,rows/2,cols/2);
+		grid.setValue(snake,rows/2,cols/2);
+		putFood();
+	}
+
+	//loops over in the game
+	function game_loop()
+	{
+		var game_status=update();
+		if(game_status==-1)
+			return;
+		drawCanvas();
+		animation = window.requestAnimationFrame(game_loop);
+	}
+
+	//drawing the game elements on the canvas
+	function drawCanvas()
+	{
+		var tile_height=canvas.height/grid.height, tile_width=canvas.width/grid.width;
+		for(i=0;i<grid.width;i++)
+		{
+			for(j=0;j<grid.height;j++)
+			{
+				//console.log("calling getValue from drawCanvas");
+				var x=grid.getValue(i,j);
+				if(x==snake)
+					context.fillStyle="#33ff33";
+				else if(x==empty)
+					context.fillStyle="#0d0d0d";
+				else if(x==food)
+					context.fillStyle="#cc0000";	
+				context.fillRect(j*tile_width,i*tile_height,tile_width,tile_height);
+			}
+		}
+	}
+
+	//updating the game variables and status
+	function update()
+	{
+		frames++;
+		//determines the direction
+		if((keystate[left_key] || keystate[a_key]) && snake.direction!=right)
+			snake.direction=left;
+		if((keystate[right_key] || keystate[d_key]) && snake.direction!=left)
+			snake.direction=right;
+		if((keystate[up_key] || keystate[w_key]) && snake.direction!=down)
+			snake.direction=up;
+		if((keystate[down_key] || keystate[s_key]) && snake.direction!=up)
+			snake.direction=down;
+	
+		if(frames%speed==0)
+		{
+			frames=0;
+			//sets the new position of the head of the snake
+			var new_position={x:snake.last.x,y:snake.last.y};
+			if(snake.direction==left)
+				new_position.y--;
+			if(snake.direction==right)
+				new_position.y++;
+			if(snake.direction==up)
+				new_position.x--;
+			if(snake.direction==down)
+				new_position.x++;
+			
+			//console.log("calling getValue from update");
+			if(new_position.x<0 || new_position.y<0 || new_position.x>grid.width-1 || new_position.y>grid.height-1 || grid.getValue(new_position.x,new_position.y)==snake)
+			{
+				//console.log(snake.q.length);
+				window.cancelAnimationFrame(animation);
+				gameover();
+				return -1;
+			}
+
+			if(grid.getValue(new_position.x,new_position.y)==food)
+			{
+				score++;
+				putFood();
+			}
+			else
+			{
+				var tail=snake.remove();
+				grid.setValue(empty,tail.x,tail.y);
+			}
+
+			grid.setValue(snake,new_position.x,new_position.y);
+			snake.insert(new_position.x,new_position.y);
+			document.getElementById('score').innerHTML=score;
+			return 0;
+		}
+	}
+
+	function gameover()
+	{
+		$("#myModal").modal();
+		document.getElementById("game_score").innerHTML=score;
+		$("#pause").fadeOut(500);
+		$("#start_again").fadeIn(500);
+	}
+
+	function play()
+	{
+		if(flag==0)
+			medium();
+		
+		main();
+		displayScore();
+		$("#start").fadeOut(500);
+		$("#pause").fadeIn(500);
+	}
+
+	function stop()
+	{
+		window.cancelAnimationFrame(animation);
+		$("#pause").fadeOut(500);		
+		$("#resume").fadeIn(500);
+	}
+
+	function restart()
+	{
+		window.requestAnimationFrame(game_loop);
+		$("#resume").fadeOut(500);				
+		$("#pause").fadeIn(500);
+	}
+
+	function reload()
+	{
+		main();
+		$("#pause").fadeIn(500);	
+	}
+
+</script>
+
+</body>
+</html>
