@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Dash Hockey</title>
+	<style type="text/css">
+		canvas{
+			margin: 5% 12% 0% 12%;
+		}
+		body{
+			background-color: black;
+		}
+	</style>
+</head>
+<body>
+
+<script type="text/javascript">
+	var
+	i,j,
+	sensitivity=10,
+	canvas,
+	context,
+	keystate,
+	frames,
+	flag,
+
+	screen = {
+		width:window.innerWidth*0.75,
+		height:window.innerHeight*0.75
+	},
+
+	player = {
+		radius:30,
+		x:screen.width*0.07,
+		y:screen.height*0.5,
+		thickness:20,
+		score:0,
+		
+		update : function()
+		{
+			if(keystate[38])
+				this.y-=sensitivity;
+			if(keystate[40])
+				this.y+=sensitivity;
+			if(keystate[37])
+				this.x-=sensitivity;
+			if(keystate[39])
+				this.x+=sensitivity;
+			
+			if((this.y<=screen.height/4 || this.y>=3*screen.height/4) && this.x<=this.radius+this.thickness)
+				this.x=this.radius+this.thickness;
+			
+			if(this.y>=screen.height-this.radius-this.thickness)
+				this.y=screen.height-this.radius-this.thickness;
+			else if(this.y<=this.radius+this.thickness)
+				this.y=this.radius+this.thickness;
+			
+			if(this.x>=screen.width/4-this.radius-this.thickness/2)
+				this.x=screen.width/4-this.radius-this.thickness/2;
+			else if(this.x<=this.radius+this.thickness/2)
+				this.x=this.radius+this.thickness/2;
+		},
+
+		draw : function()
+		{
+			context.beginPath();
+    		context.arc(this.x,this.y,this.radius,0,2*Math.PI,false);
+    		context.fillStyle='red';
+   			context.fill();
+		    context.lineWidth=this.thickness;
+		    context.strokeStyle='#181818';
+    		context.stroke();
+		}
+	},
+
+	bot={
+		radius:30,
+		x:screen.width*0.93,
+		y:screen.height*0.5,
+		position:screen.width*0.5,
+		thickness:20,
+		score:0,
+
+		draw : function()
+		{
+			context.beginPath();
+    		context.arc(this.x,this.y,this.radius,0,2*Math.PI,false);
+    		context.fillStyle='blue';
+   			context.fill();
+		    context.lineWidth=this.thickness;
+		    context.strokeStyle='#181818';
+    		context.stroke();
+		},
+
+		update : function()
+		{
+			if(puck.x>=2*screen.width/3)
+			{
+				var desty=puck.y-(this.radius-puck.radius)*0.5;
+				this.y+=(desty-this.y)*0.1;
+			}
+			
+			if((this.y<=screen.height/4 || this.y>=3*screen.height/4) && this.x>=screen.width-this.radius-this.thickness)
+				this.x=screen.width-this.radius-this.thickness;
+			
+			if(this.y>=screen.height-this.radius-this.thickness)
+				this.y=screen.height-this.radius-this.thickness;
+			else if(this.y<=this.radius+this.thickness)
+				this.y=this.radius+this.thickness;
+			
+			if(this.x>=screen.width-this.radius-this.thickness/2)
+				this.x=screen.width-this.radius-this.thickness/2;
+			else if(this.x<=3*screen.width/4+this.radius+this.thickness/2)
+				this.x=3*screen.width/4+this.radius+this.thickness/2;
+		}
+	},
+
+	puck={
+		radius:16,
+		x:screen.width*0.5,
+		y:screen.height*0.5,
+		vel_x:null,
+		vel_y:null,
+		thickness:4,
+		
+		draw : function()
+		{
+			context.beginPath();
+    		context.arc(this.x,this.y,this.radius,0,2*Math.PI,false);
+    		context.fillStyle='#0f0f0f';
+   			context.fill();
+   			context.lineWidth=this.thickness;
+		    context.strokeStyle='#363636';
+    		context.stroke();
+		},
+
+		update : function()
+		{			
+			//left and right top most vertical barrier
+			if(this.y<=screen.height/4 && (this.x>=screen.width-this.radius-this.thickness+10 || this.x<=this.radius+this.thickness+10))
+				this.vel_x=-0.95*this.vel_x;
+			
+			//left and right bottom most vertical barrier
+			else if(this.y>=3*screen.height/4 && (this.x<=this.radius+this.thickness+10 || this.x>=screen.width-this.radius-this.thickness+10))
+				this.vel_x=-0.95*this.vel_x;
+			
+			//top most horizontal barrier
+			if(this.y<=this.radius+this.thickness+10)
+				this.vel_y=-0.95*this.vel_y;
+			
+			//bottom most horizontal barrier
+			else if(this.y>=screen.height-this.radius-this.thickness-10)
+				this.vel_y=-0.95*this.vel_y;
+			
+			//collision with player
+			if(Math.sqrt(Math.pow((player.x-puck.x),2)+Math.pow((player.y-puck.y),2))<=player.radius+player.thickness/2+puck.radius+2*puck.thickness)
+			{
+				this.vel_x=-1*(this.vel_x+sensitivity/3);
+				this.vel_y=-1*(this.vel_y+sensitivity/3);
+				player.x=player.x-4;
+				player.y=player.y+4*(Math.abs(this.vel_y)/this.vel_y);
+				flag=0;
+			}
+			
+			//collision with bot
+			else if(Math.sqrt(Math.pow((bot.x-puck.x),2)+Math.pow((bot.y-puck.y),2))<=bot.radius+bot.thickness/2+puck.radius+2*puck.thickness)
+			{
+				this.vel_x=-1*(sensitivity/3+this.vel_x);
+				this.vel_y=-1*(sensitivity/3+this.vel_y);
+				bot.x=bot.x+4;
+				bot.y=bot.y+4*(Math.abs(this.vel_y)/this.vel_y);
+				flag=1;
+			}
+			
+			//goal in the bot's side
+			if(this.x>=screen.width-this.radius-this.thickness && (this.y>screen.height/4 && this.y<3*screen.height/4))
+			{
+				player.score+=1;
+				this.serve(1);
+			}
+
+			//goal in the player's side
+			else if(this.x<=this.radius+this.thickness && (this.y>screen.height/4 && this.y<3*screen.height/4)) 
+			{
+				bot.player+=1;
+				this.serve(-1);
+			}
+
+			this.x+=this.vel_x;
+			this.y+=this.vel_y;
+		},
+
+		serve : function(side)
+		{
+			this.x=screen.width*0.5;
+			this.y=screen.height*0.5;
+			var d=Math.random()+1;
+			this.vel_x=7*d*side;
+			this.vel_y=7*d*(Math.random()+2-Math.random()-2)*side;
+		}
+	};
+
+	function main()
+	{
+		canvas=document.createElement("canvas");
+		canvas.width=screen.width;
+		canvas.height=screen.height;
+		context=canvas.getContext("2d");
+		document.body.appendChild(canvas);
+
+		keystate={};
+
+		document.addEventListener("keydown",function(event){
+			keystate[event.keyCode]=true;
+		});
+
+		document.addEventListener("keyup",function(event){
+			delete	keystate[event.keyCode];
+		});
+
+		initialise();
+		game_loop();
+	}
+
+	function draw()
+	{
+		context.fillStyle="#0d0d0d";
+		context.fillRect(0,0,screen.width,screen.height);
+		context.save();
+		
+		var w=4;
+		var x=(canvas.width-w)*0.5;
+		var y=0;
+		var step=canvas.height/20;
+		
+		context.fillStyle="#363636";
+		while (y<canvas.height)
+		{
+			context.fillRect(x, y+step*0.25, w, step*0.5);
+			y+=step;
+		}
+
+		context.fillStyle="#363636";
+		context.fillRect(canvas.width/4,0,5,canvas.height);		
+		
+		context.fillStyle="#363636";
+		context.fillRect(3*canvas.width/4,0,5,canvas.height);		
+		
+		context.fillStyle="#363636";
+		context.fillRect(0,0,10,canvas.height/4);
+
+		context.fillStyle="#363636";
+		context.fillRect(canvas.width-10,0,canvas.width,canvas.height/4);
+		
+		context.fillStyle="#363636";
+		context.fillRect(0,3*canvas.height/4,10,canvas.height);
+
+		context.fillStyle="#363636";
+		context.fillRect(canvas.width-10,3*canvas.height/4,canvas.width,canvas.height);
+		
+		context.fillStyle="#363636";
+		context.fillRect(0,0,canvas.width,10);
+		
+		context.fillStyle="#363636";
+		context.fillRect(0,canvas.height-10,canvas.width,canvas.height);
+
+		context.beginPath();
+    	context.arc(0,canvas.height/2,canvas.height/4,0,2*Math.PI,false);
+    	context.lineWidth=5;
+    	context.strokeStyle='#363636';
+    	context.stroke();
+
+		context.beginPath();
+    	context.arc(canvas.width,canvas.height/2,canvas.height/4,0,2*Math.PI,false);
+    	context.lineWidth=5;
+    	context.strokeStyle='#363636';
+    	context.stroke();
+
+		context.beginPath();
+    	context.arc(canvas.width/2,canvas.height/2,2*canvas.height/5,0,2*Math.PI,false);
+    	context.lineWidth=3;
+    	context.strokeStyle='#363636';
+    	context.stroke();
+    	
+    	context.beginPath();
+    	context.arc(canvas.width/2,canvas.height/2,canvas.height/4,0,2*Math.PI,false);
+    	context.lineWidth=3;
+    	context.strokeStyle='#363636';
+    	context.stroke();
+    	
+		context.beginPath();
+    	context.arc(canvas.width/2,canvas.height/2,20,0,2*Math.PI,false);
+    	context.fillStyle='#363636';
+   		context.fill();
+		
+		puck.draw();
+		player.draw();
+		bot.draw();
+	}
+
+	function initialise()
+	{
+		flag=0;
+		puck.serve(1);
+		bot.x=screen.width*0.93;
+		bot.y=screen.height*0.5;
+	}
+
+	function game_loop()
+	{
+		update();
+		draw();
+		window.requestAnimationFrame(game_loop);
+	}
+
+	function update()
+	{
+		puck.update();
+		player.update();
+		bot.update();
+	}
+	main();
+
+</script>
+</body>
+</html>
